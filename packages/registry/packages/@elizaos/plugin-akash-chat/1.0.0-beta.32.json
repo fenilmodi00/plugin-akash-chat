@@ -1,0 +1,22 @@
+{
+  "name": "@elizaos/plugin-akash-chat",
+  "version": "1.0.0-beta.32",
+  "description": "",
+  "type": "plugin",
+  "platform": "universal",
+  "runtimeVersion": "1.0.0-beta.32",
+  "repository": "https://github.com/elizaos-plugins/plugin-akash-chat",
+  "maintainers": [
+    "fenilmodi00"
+  ],
+  "publishedAt": "2025-04-15T10:21:35.240Z",
+  "publishedBy": "fenilmodi00",
+  "dependencies": {
+    "@elizaos/core": "^1.0.0-beta.32",
+    "@elizaos/plugin-local-ai": "1.0.0-beta.32",
+    "form-data": "^4.0.0",
+    "node-fetch": "^3.3.2"
+  },
+  "tags": [],
+  "license": "UNLICENSED"
+}

@@ -1,0 +1,23 @@
+{
+  "v1": {
+    "packages": {}
+  },
+  "v2": {
+    "packages": {
+      "@elizaos/plugin-akash-chat": {
+        "name": "@elizaos/plugin-akash-chat",
+        "description": "",
+        "type": "plugin",
+        "versions": {
+          "1.0.0-beta.32": {
+            "version": "1.0.0-beta.32",
+            "runtimeVersion": "1.0.0-beta.32",
+            "platform": "universal",
+            "publishedAt": "2025-04-15T10:21:35.240Z",
+            "published": false
+          }
+        }
+      }
+    }
+  }
+}
