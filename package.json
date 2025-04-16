@@ -22,10 +22,12 @@
     "dist"
   ],
   "dependencies": {
+    "@ai-sdk/openai": "^1.1.9",
+    "@ai-sdk/ui-utils": "1.1.9",
     "@elizaos/core": "^1.0.0-beta.32",
-    "@elizaos/plugin-local-ai": "1.0.0-beta.32",
-    "form-data": "^4.0.0",
-    "node-fetch": "^3.3.2"
+    "ai": "^4.1.25",
+    "js-tiktoken": "^1.0.18",
+    "tsup": "8.4.0"
   },
   "scripts": {
     "build": "tsup",
@@ -43,13 +45,12 @@
     "pluginParameters": {
       "AKASH_CHAT_API_KEY": {
         "type": "string",
-        "description": "API key for the Akash Chat service"
+        "description": "API key for the service"
       }
     }
   },
+  "gitHead": "917e8b28d02cc09316dd61d1fb29c683f29689ef",
   "devDependencies": {
-    "prettier": "3.5.3",
-    "tsup": "8.4.0",
-    "@types/node": "^20.11.24"
+    "prettier": "3.5.3"
   }
 }
