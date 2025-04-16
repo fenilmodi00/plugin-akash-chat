@@ -1,69 +1,93 @@
-# Akash Chat Plugin
+# akash-chat Plugin
 
-A plugin for integrating with the Akash Chat API, providing text generation and embedding capabilities.
-
-## Features
-
-- Text generation using different model sizes (small and large)
-- Text embedding generation
-- Object generation capabilities
-- Error handling and retry mechanisms
-- Configuration management
-
-## Installation
-
-1. Clone the repository:
-```bash
-git clone https://github.com/yourusername/plugin-akash-chat.git
-cd plugin-akash-chat
-```
-
-2. Install dependencies:
-```bash
-npm install
-```
-
-3. Set up environment variables:
-```bash
-cp .env.example .env
-```
-Then edit `.env` and add your Akash Chat API key.
-
-## Configuration
-
-The following environment variables are required:
-
-- `AKASH_CHAT_API_KEY`: Your Akash Chat API key
-- `AKASH_CHAT_SMALL_MODEL`: Model name for small text generation tasks
-- `AKASH_CHAT_LARGE_MODEL`: Model name for large text generation tasks
-- `AKASH_CHAT_EMBEDDING_MODEL`: Model name for embedding generation
+This plugin provides integration with Akash Chat's models through the ElizaOS v2 platform.
 
 ## Usage
 
-```typescript
-import { akashChatPlugin } from 'plugin-akash-chat';
+Add the plugin to your character configuration:
 
-// Initialize the plugin
-await akashChatPlugin.init(config, runtime);
+```json
+"plugins": ["@elizaos/plugin-akash-chat"]
+```
 
-// Use the plugin for text generation
-const result = await runtime.useModel(ModelType.TEXT_SMALL, {
-  prompt: "Your prompt here"
+## Configuration
+
+The plugin requires these environment variables (can be set in .env file or character settings):
+
+```json
+"settings": {
+  "AKASH_CHAT_API_KEY": "your_akash-chat_api_key",
+  "AKASH_CHAT_BASE_URL": "optional_custom_endpoint",
+  "AKASH_CHAT_SMALL_MODEL": "Meta-Llama-3-1-8B-Instruct-FP8",
+  "AKASH_CHAT_LARGE_MODEL": "Meta-Llama-3-3-70B-Instruct",
+  "AKASH_CHAT_EMBEDDING_MODEL": "BAAI-bge-large-en-v1-5",
+  "AKASH_CHAT_EMBEDDING_DIMENSIONS": "1024"
+}
+```
+
+Or in `.env` file:
+
+```env
+AKASH_CHAT_API_KEY=your_akash-chat_api_key
+# Optional overrides:
+AKASH_CHAT_BASE_URL=optional_custom_endpoint
+AKASH_CHAT_SMALL_MODEL=Meta-Llama-3-1-8B-Instruct-FP8
+AKASH_CHAT_LARGE_MODEL=Meta-Llama-3-3-70B-Instruct
+AKASH_CHAT_EMBEDDING_MODEL=BAAI-bge-large-en-v1-5
+AKASH_CHAT_EMBEDDING_DIMENSIONS=1024
+```
+
+### Configuration Options
+
+- `AKASH_CHAT_API_KEY` (required): Your Akash Chat API credentials
+- `AKASH_CHAT_BASE_URL`: Custom API endpoint (default: https://chatapi.akash.network/api/v1)
+- `AKASH_CHAT_SMALL_MODEL`: Defaults to Llama 3.1 ("Meta-Llama-3-1-8B-Instruct-FP8")
+- `AKASH_CHAT_LARGE_MODEL`: Defaults to Llama 3.3 ("Meta-Llama-3-3-70B-Instruct")
+- `AKASH_CHAT_EMBEDDING_MODEL`: Defaults to BAAI-bge-large-en-v1-5 ("BAAI-bge-large-en-v1-5")
+- `AKASH_CHAT_EMBEDDING_DIMENSIONS`: Defaults to 1024 (1024)
+
+The plugin provides these model classes:
+
+- `TEXT_SMALL`: Optimized for fast, cost-effective responses
+- `TEXT_LARGE`: For complex tasks requiring deeper reasoning
+- `TEXT_TOKENIZER_ENCODE`: Text tokenization
+- `TEXT_TOKENIZER_DECODE`: Token decoding
+- `TEXT_EMBEDDING`: Text embedding generation
+
+## Additional Features
+
+### Text Embeddings
+
+```js
+const embedding = await runtime.useModel(ModelType.TEXT_EMBEDDING, 'text to embed');
+```
+
+### Text Generation
+
+```js
+// Small model for quick responses
+const smallResponse = await runtime.useModel(ModelType.TEXT_SMALL, {
+  prompt: 'Your prompt here'
+});
+
+// Large model for complex tasks
+const largeResponse = await runtime.useModel(ModelType.TEXT_LARGE, {
+  prompt: 'Your complex prompt here',
+  temperature: 0.7,
+  maxTokens: 8192
 });
 ```
 
-## Development
+### Tokenization
 
-1. Make your changes
-2. Run tests:
-```bash
-npm test
+```js
+// Encode text to tokens
+const tokens = await runtime.useModel(ModelType.TEXT_TOKENIZER_ENCODE, {
+  prompt: 'Text to tokenize'
+});
+
+// Decode tokens back to text
+const text = await runtime.useModel(ModelType.TEXT_TOKENIZER_DECODE, {
+  tokens: tokens
+});
 ```
-3. Build the project:
-```bash
-npm run build
-```
-
-## License
-
-MIT
