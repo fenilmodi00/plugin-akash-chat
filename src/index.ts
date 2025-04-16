@@ -60,17 +60,7 @@ function getSetting(runtime: any, key: string, defaultValue?: string): string | 
  * @returns The configured base URL or default
  */
 function getBaseURL(runtime: any): string {
-  return getSetting(runtime, 'AKASH_CHAT_BASE_URL', 'https://chatapi.akash.network/api/v1');
-}
-
-/**
- * Helper function to get the image generation URL for AkashChat API
- *
- * @param runtime The runtime context
- * @returns The configured image generation URL or default
- */
-function getImageGenerateURL(runtime: any): string {
-  return getSetting(runtime, 'AKASH_CHAT_IMAGE_GENERATE_URL', 'https://gen.akash.network/api');
+  return 'https://chatapi.akash.network/api/v1';
 }
 
 /**
@@ -493,92 +483,6 @@ export const akashchatPlugin: Plugin = {
         return 'Error generating text. Please try again later.';
       }
     },
-    [ModelType.IMAGE]: async (
-      runtime,
-      params: {
-        prompt: string;
-        negative: string;
-        sampler: string;
-        scheduler: string;
-        preferred_gpu: string[];
-      }
-    ) => {
-      try {
-        const imageGenerateURL = getImageGenerateURL(runtime);
-        const response = await fetch(`${imageGenerateURL}/generate`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${runtime.getSetting('AKASH_CHAT_API_KEY')}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            prompt: params.prompt,
-            negative: params.negative ?? '',
-            sampler: params.sampler ?? 'dpmpp_2m',
-            scheduler: params.scheduler ?? 'sgm_uniform',
-            preferred_gpu: params.preferred_gpu ?? ['RTX4090', 'A10', 'A100', 'V100-32Gi', 'H100'],
-          }),
-        });
-        if (!response.ok) {
-          logger.error(`Failed to generate image: ${response.statusText}`);
-          return [{ url: '' }];
-        }
-        const data: { job_id: string } = await response.json() as { job_id: string };
-        // Expecting response to include job_id
-        const jobId = data?.job_id;
-        if (!jobId) {
-          logger.error('No job_id found in image generation response');
-          return [{ url: '' }];
-        }
-        // Polling loop for job status
-        const statusUrl = `${imageGenerateURL}/status?ids=${jobId}`;
-        let status = 'pending';
-        let result = '';
-        const maxAttempts = 60; // 1 minute timeout
-        let attempts = 0;
-        while (status === 'pending' && attempts < maxAttempts) {
-          await new Promise(res => setTimeout(res, 3000));
-          attempts++;
-          try {
-            const pollRes = await fetch(statusUrl);
-            if (!pollRes.ok) {
-              logger.error(`Failed to poll image status: ${pollRes.statusText}`);
-              continue;
-            }
-            const pollData: ImageGenerationResponse = await pollRes.json() as ImageGenerationResponse;
-            // pollData is expected to be an array or object keyed by jobId
-            let jobStatusObj;
-            if (Array.isArray(pollData)) {
-              jobStatusObj = pollData.find((j: any) => j.job_id === jobId);
-            } else if (pollData && pollData[jobId]) {
-              jobStatusObj = pollData[jobId];
-            } else {
-              jobStatusObj = pollData;
-            }
-            if (!jobStatusObj) {
-              logger.error('No job status found for job_id:', jobId);
-              continue;
-            }
-            status = jobStatusObj.status;
-            if (status === 'completed') {
-              result = jobStatusObj.result;
-              break;
-            }
-          } catch (err) {
-            logger.error('Error polling image status:', err);
-          }
-        }
-        if (status !== 'completed' || !result) {
-          logger.error('Image generation did not complete successfully');
-          return [{ url: '' }];
-        }
-        // Return the image as a data URL (webp, etc)
-        return [{ url: result }];
-      } catch (error) {
-        logger.error('Error in IMAGE model:', error);
-        return [{ url: '' }];
-      }
-    },
     [ModelType.OBJECT_SMALL]: async (runtime, params: ObjectGenerationParams) => {
       try {
         const baseURL = getCloudflareGatewayBaseURL(runtime, 'akashchat');
@@ -696,24 +600,6 @@ export const akashchatPlugin: Plugin = {
               logger.log('generated with test_text_small:', text);
             } catch (error) {
               logger.error('Error in test_text_small:', error);
-            }
-          },
-        },
-        {
-          name: 'akashchat_test_image_generation',
-          fn: async (runtime) => {
-            try {
-              logger.log('akashchat_test_image_generation');
-              const image = await runtime.useModel(ModelType.IMAGE, {
-                prompt: 'A beautiful sunset over a calm ocean',
-                negative: '',
-                sampler: 'dpmpp_2m',
-                scheduler: 'sgm_uniform',
-                preferred_gpu: ['RTX4090', 'A10', 'A100', 'V100-32Gi', 'H100'],
-              });
-              logger.log('generated with test_image_generation:', image);
-            } catch (error) {
-              logger.error('Error in test_image_generation:', error);
             }
           },
         },
