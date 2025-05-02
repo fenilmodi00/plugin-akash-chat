@@ -82,15 +82,8 @@ function getApiURL(runtime: Runtime): string {
  * Check if a model type is supported in the current ElizaOS version
  */
 function isModelTypeSupported(runtime: any, modelType: ModelTypeName): boolean {
-  try {
-    // Try to access the model handler registry to see if this type is registered
-    return runtime.hasModelHandler?.(modelType) ?? 
-           // Fallback check for older versions
-           Object.values(ModelType).includes(modelType);
-  } catch (error) {
-    // If there's an error, assume it's not supported
-    return false;
-  }
+  // Always return true to force Akash API usage
+  return true;
 }
 
 /**
@@ -129,6 +122,8 @@ function getModelName(runtime: Runtime, modelType: ModelTypeName): string {
       return getSetting(runtime, 'AKASH_CHAT_SMALL_MODEL', 'Meta-Llama-3-1-8B-Instruct-FP8')!;
     case ModelType.TEXT_MEDIUM:
       return getSetting(runtime, 'AKASH_CHAT_MEDIUM_MODEL', 'Meta-Llama-3-2-3B-Instruct')!;
+    case ModelType.EMBEDDING:
+      return getSetting(runtime, 'AKASHCHAT_EMBEDDING_MODEL', 'BAAI-bge-large-en-v1-5')!;
     default:
       return getSetting(runtime, 'AKASH_CHAT_LARGE_MODEL', 'Meta-Llama-3-3-70B-Instruct')!;
   }

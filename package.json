@@ -1,7 +1,7 @@
 {
   "name": "@elizaos/plugin-akash-chat",
   "description": "This plugin integrates Akash Chat API with ElizaOS, providing a complete replacement for OpenAI API functionality. It supports text generation, embeddings, tokenization, and object generation.",
-  "version": "1.0.0-beta.35",
+  "version": "1.0.0-beta.41",
   "private": true,
   "type": "module",
   "main": "dist/index.js",
@@ -25,10 +25,10 @@
   ],
   "dependencies": {
     "@ai-sdk/openai": "^1.3.21",
-    "@elizaos/cli": "1.0.0-beta.37",
-    "@elizaos/core": "1.0.0-beta.37",
-    "@elizaos/plugin-bootstrap": "1.0.0-beta.37",
-    "@elizaos/plugin-local-ai": "1.0.0-beta.37",
+    "@elizaos/cli": "1.0.0-beta.41",
+    "@elizaos/core": "1.0.0-beta.41",
+    "@elizaos/plugin-bootstrap": "1.0.0-beta.41",
+    "@elizaos/plugin-local-ai": "1.0.0-beta.41",
     "ai": "^4.3.13",
     "zod": "3.24.2"
   },

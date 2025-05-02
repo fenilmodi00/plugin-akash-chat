@@ -5,10 +5,10 @@
       "name": "@elizaos/plugin-akash-chat",
       "dependencies": {
         "@ai-sdk/openai": "^1.3.21",
-        "@elizaos/cli": "1.0.0-beta.37",
-        "@elizaos/core": "1.0.0-beta.37",
-        "@elizaos/plugin-bootstrap": "1.0.0-beta.37",
-        "@elizaos/plugin-local-ai": "1.0.0-beta.37",
+        "@elizaos/cli": "1.0.0-beta.41",
+        "@elizaos/core": "1.0.0-beta.41",
+        "@elizaos/plugin-bootstrap": "1.0.0-beta.41",
+        "@elizaos/plugin-local-ai": "1.0.0-beta.41",
         "ai": "^4.3.13",
         "zod": "3.24.2",
       },
@@ -37,13 +37,13 @@
 
     "@electric-sql/pglite": ["@electric-sql/pglite@0.2.17", "", {}, "sha512-qEpKRT2oUaWDH6tjRxLHjdzMqRUGYDnGZlKrnL4dJ77JVMcP2Hpo3NYnOSPKdZdeec57B6QPprCUFg0picx5Pw=="],
 
-    "@elizaos/cli": ["@elizaos/cli@1.0.0-beta.37", "", { "dependencies": { "@electric-sql/pglite": "^0.2.17", "@elizaos/core": "^1.0.0-beta.37", "socket.io": "^4.8.1", "zod": "3.24.2" }, "bin": { "elizaos": "dist/index.js" } }, "sha512-IfN97nxOdxShXG7kGDDP/C+hd30MUfx8s0xbNm0F3z4l9bOzZc2kdLVdXSl7kplU0MMFiIpDntB7Ka3cW/8fbA=="],
+    "@elizaos/cli": ["@elizaos/cli@1.0.0-beta.41", "", { "dependencies": { "@electric-sql/pglite": "^0.2.17", "@elizaos/core": "^1.0.0-beta.41", "path-to-regexp": "^8.2.0", "socket.io": "^4.8.1", "zod": "3.24.2" }, "bin": { "elizaos": "dist/index.js" } }, "sha512-HD4DIp2W7hIc3EoCsFQiUxeB7po1Y33DmYGkOE/nXbMu3EfPemwHgmnZRhSwW9KQDbQnXYkgydKybebtUtfhyQ=="],
 
-    "@elizaos/core": ["@elizaos/core@1.0.0-beta.37", "", { "dependencies": { "@opentelemetry/api": "^1.9.0", "@opentelemetry/exporter-trace-otlp-http": "^0.53.0", "@opentelemetry/instrumentation-pg": "^0.52.0", "@opentelemetry/sdk-metrics": "^1.26.0", "@opentelemetry/sdk-node": "^0.53.0", "buffer": "^6.0.3", "crypto-browserify": "^3.12.1", "dotenv": "16.4.5", "events": "^3.3.0", "glob": "11.0.0", "handlebars": "^4.7.8", "js-sha1": "0.7.0", "langchain": "^0.3.15", "pino": "^9.6.0", "pino-pretty": "^13.0.0", "stream-browserify": "^3.0.0", "unique-names-generator": "4.7.1", "uuid": "11.0.3" } }, "sha512-ORQhOM2dADawkyzug4A2qrGSZAXmTPv9Rr55SoAYtMY7wtPcq3Uxq3D0IAdPBLFvGUrWOBaqIS8Na4mpSsdjIg=="],
+    "@elizaos/core": ["@elizaos/core@1.0.0-beta.41", "", { "dependencies": { "@opentelemetry/api": "^1.9.0", "@opentelemetry/exporter-trace-otlp-http": "^0.53.0", "@opentelemetry/instrumentation-pg": "^0.52.0", "@opentelemetry/sdk-metrics": "^1.26.0", "@opentelemetry/sdk-node": "^0.53.0", "buffer": "^6.0.3", "crypto-browserify": "^3.12.1", "dotenv": "16.4.5", "events": "^3.3.0", "glob": "11.0.0", "handlebars": "^4.7.8", "js-sha1": "0.7.0", "langchain": "^0.3.15", "pino": "^9.6.0", "pino-pretty": "^13.0.0", "stream-browserify": "^3.0.0", "unique-names-generator": "4.7.1", "uuid": "11.0.3" } }, "sha512-j0FD34Cjm76RhWvsZFCUSfYKjMzICiejmgPnTne3asQDHVAGG3DcVoc+N9ZYrbha5T2EpGRNJkLjQjE8AJ0paQ=="],
 
-    "@elizaos/plugin-bootstrap": ["@elizaos/plugin-bootstrap@1.0.0-beta.37", "", { "dependencies": { "@elizaos/core": "^1.0.0-beta.37" }, "peerDependencies": { "whatwg-url": "7.1.0" } }, "sha512-uEEY/Qmm7mhl0KwGOwQvdRuaEoPtOWSXjEj0rjz1f3XxzzQ02T7KJZSRncnTb1F6gD+AcW5u7YgQws4LDmjiYA=="],
+    "@elizaos/plugin-bootstrap": ["@elizaos/plugin-bootstrap@1.0.0-beta.41", "", { "dependencies": { "@elizaos/core": "^1.0.0-beta.41" }, "peerDependencies": { "whatwg-url": "7.1.0" } }, "sha512-DhMof/2hFFQemk/dsaEwa02d/5DhycGUVRtyxPUDlBaYYsxRF4q6+5qK8SkH/XxqtSG+xFPGNIxylg0r6VUT1w=="],
 
-    "@elizaos/plugin-local-ai": ["@elizaos/plugin-local-ai@1.0.0-beta.37", "", { "dependencies": { "@elizaos/core": "^1.0.0-beta.37", "@huggingface/hub": "^1.0.1", "@huggingface/inference": "^3.3.4", "@huggingface/transformers": "^3.3.3", "@types/uuid": "10.0.0", "fluent-ffmpeg": "2.1.3", "formdata-node": "6.0.3", "fs-extra": "11.2.0", "glob": "11.0.0", "graceful-fs": "4.2.11", "node-llama-cpp": "3.6.0", "nodejs-whisper": "0.1.18", "onnxruntime-node": "1.20.1", "srt": "0.0.3", "tsup": "8.4.0", "uuid": "11.0.3", "zod": "3.24.2" }, "peerDependencies": { "whatwg-url": "7.1.0" } }, "sha512-zciTb8F/JwoLmcwziGjBoqbBZythoTZY+U+4N2pBlDrf5zKL58Y9ISlJ506Ax5FUHLJ7KXFTkDtc8SG8pXjc+A=="],
+    "@elizaos/plugin-local-ai": ["@elizaos/plugin-local-ai@1.0.0-beta.41", "", { "dependencies": { "@elizaos/core": "^1.0.0-beta.41", "@huggingface/hub": "^1.0.1", "@huggingface/inference": "^3.3.4", "@huggingface/transformers": "^3.3.3", "@types/uuid": "10.0.0", "fluent-ffmpeg": "2.1.3", "formdata-node": "6.0.3", "fs-extra": "11.2.0", "glob": "11.0.0", "graceful-fs": "4.2.11", "node-llama-cpp": "3.6.0", "nodejs-whisper": "0.1.18", "onnxruntime-node": "1.20.1", "srt": "0.0.3", "tsup": "8.4.0", "uuid": "11.0.3", "zod": "3.24.2" }, "peerDependencies": { "whatwg-url": "7.1.0" } }, "sha512-OVy5+4VWGYt7sAG8mTH9Rp6YTRREEXZgw0DTqf6UrqnJHpHOSiobHLpj+zW6ANmcrigx0GzdlZMkq7efUNixkA=="],
 
     "@emnapi/runtime": ["@emnapi/runtime@1.4.3", "", { "dependencies": { "tslib": "^2.4.0" } }, "sha512-pBPWdu6MLKROBX05wSNKcNb++m5Er+KQ9QkB+WVM+pW2Kx9hoSrVTnu3BdkI5eBLZoKu/J6mW/B6i6bJB2ytXQ=="],
 
@@ -887,6 +887,8 @@
 
     "path-scurry": ["path-scurry@2.0.0", "", { "dependencies": { "lru-cache": "^11.0.0", "minipass": "^7.1.2" } }, "sha512-ypGJsmGtdXUOeM5u93TyeIEfEhM6s+ljAhrk5vAvSx8uyY/02OvrZnA0YNGUrPXfpJMgI1ODd3nwz8Npx4O4cg=="],
 
+    "path-to-regexp": ["path-to-regexp@8.2.0", "", {}, "sha512-TdrF7fW9Rphjq4RjrW0Kp2AW0Ahwu9sRGTkS6bvDi0SCwZlEZYmcfDbEsTz8RVk0EHIS/Vd1bv3JhG+1xZuAyQ=="],
+
     "pbkdf2": ["pbkdf2@3.1.2", "", { "dependencies": { "create-hash": "^1.1.2", "create-hmac": "^1.1.4", "ripemd160": "^2.0.1", "safe-buffer": "^5.0.1", "sha.js": "^2.4.8" } }, "sha512-iuh7L6jA7JEGu2WxDwtQP1ddOpaJNC4KlDEFfdQajSGgGPNi4OyDc2R7QnbY2bR9QjBVGwgvTdNJZoE7RaxUMA=="],
 
     "pg-int8": ["pg-int8@1.0.1", "", {}, "sha512-WCtabS6t3c8SkpDBUlb1kjOs7l66xsGdKpIPZsg4wR+B3+u9UAum2odSsF9tnvxg80h4ZxLWMy4pRjOsFIqQpw=="],
@@ -1154,12 +1156,6 @@
     "zod": ["zod@3.24.2", "", {}, "sha512-lY7CDW43ECgW9u1TcT3IoXHflywfVqDYze4waEz812jR/bZ8FHDsl7pFQoSZTz5N+2NqRXs8GBwnAwo3ZNxqhQ=="],
 
     "zod-to-json-schema": ["zod-to-json-schema@3.24.5", "", { "peerDependencies": { "zod": "^3.24.1" } }, "sha512-/AuWwMP+YqiPbsJx5D6TfgRTc4kTLjsh5SOcd4bLsfUg2RcEXrFMJl1DGgdHy2aCfsIA/cr/1JM0xcB2GZji8g=="],
-
-    "@elizaos/cli/@elizaos/core": ["@elizaos/core@1.0.0-beta.41", "", { "dependencies": { "@opentelemetry/api": "^1.9.0", "@opentelemetry/exporter-trace-otlp-http": "^0.53.0", "@opentelemetry/instrumentation-pg": "^0.52.0", "@opentelemetry/sdk-metrics": "^1.26.0", "@opentelemetry/sdk-node": "^0.53.0", "buffer": "^6.0.3", "crypto-browserify": "^3.12.1", "dotenv": "16.4.5", "events": "^3.3.0", "glob": "11.0.0", "handlebars": "^4.7.8", "js-sha1": "0.7.0", "langchain": "^0.3.15", "pino": "^9.6.0", "pino-pretty": "^13.0.0", "stream-browserify": "^3.0.0", "unique-names-generator": "4.7.1", "uuid": "11.0.3" } }, "sha512-j0FD34Cjm76RhWvsZFCUSfYKjMzICiejmgPnTne3asQDHVAGG3DcVoc+N9ZYrbha5T2EpGRNJkLjQjE8AJ0paQ=="],
-
-    "@elizaos/plugin-bootstrap/@elizaos/core": ["@elizaos/core@1.0.0-beta.41", "", { "dependencies": { "@opentelemetry/api": "^1.9.0", "@opentelemetry/exporter-trace-otlp-http": "^0.53.0", "@opentelemetry/instrumentation-pg": "^0.52.0", "@opentelemetry/sdk-metrics": "^1.26.0", "@opentelemetry/sdk-node": "^0.53.0", "buffer": "^6.0.3", "crypto-browserify": "^3.12.1", "dotenv": "16.4.5", "events": "^3.3.0", "glob": "11.0.0", "handlebars": "^4.7.8", "js-sha1": "0.7.0", "langchain": "^0.3.15", "pino": "^9.6.0", "pino-pretty": "^13.0.0", "stream-browserify": "^3.0.0", "unique-names-generator": "4.7.1", "uuid": "11.0.3" } }, "sha512-j0FD34Cjm76RhWvsZFCUSfYKjMzICiejmgPnTne3asQDHVAGG3DcVoc+N9ZYrbha5T2EpGRNJkLjQjE8AJ0paQ=="],
-
-    "@elizaos/plugin-local-ai/@elizaos/core": ["@elizaos/core@1.0.0-beta.41", "", { "dependencies": { "@opentelemetry/api": "^1.9.0", "@opentelemetry/exporter-trace-otlp-http": "^0.53.0", "@opentelemetry/instrumentation-pg": "^0.52.0", "@opentelemetry/sdk-metrics": "^1.26.0", "@opentelemetry/sdk-node": "^0.53.0", "buffer": "^6.0.3", "crypto-browserify": "^3.12.1", "dotenv": "16.4.5", "events": "^3.3.0", "glob": "11.0.0", "handlebars": "^4.7.8", "js-sha1": "0.7.0", "langchain": "^0.3.15", "pino": "^9.6.0", "pino-pretty": "^13.0.0", "stream-browserify": "^3.0.0", "unique-names-generator": "4.7.1", "uuid": "11.0.3" } }, "sha512-j0FD34Cjm76RhWvsZFCUSfYKjMzICiejmgPnTne3asQDHVAGG3DcVoc+N9ZYrbha5T2EpGRNJkLjQjE8AJ0paQ=="],
 
     "@huggingface/inference/@huggingface/tasks": ["@huggingface/tasks@0.19.1", "", {}, "sha512-cocq5+jkmh8+qIvWDCyC9nkf7qCpmBRrJL/WPWhfIMXWEv2dMYMY62ylFv+dq/vRwpe+/5h0WlnZGOSIa+3OJg=="],
 
