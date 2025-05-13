@@ -9,7 +9,7 @@
   "types": "dist/index.d.ts",
   "repository": {
     "type": "git",
-    "url": "github:eliza-plugins/plugin-akash-chat"
+    "url": "github:fenilmodi00/plugin-akash-chat"
   },
   "exports": {
     "./package.json": "./package.json",
