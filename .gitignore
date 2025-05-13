@@ -1,7 +1,7 @@
 # Create .gitignore file
 # Dependencies
 node_modules/
-/.pnp
+.pnp
 .pnp.js
 
 # Build output

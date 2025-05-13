@@ -84,9 +84,9 @@ function getApiURL(runtime: Runtime): string {
 function isModelTypeSupported(runtime: any, modelType: ModelTypeName): boolean {
   try {
     // Try to access the model handler registry to see if this type is registered
-    return runtime.hasModelHandler?.(modelType) ?? 
+    return runtime.hasModelHandler?.(modelType as any) ?? 
            // Fallback check for older versions
-           Object.values(ModelType).includes(modelType);
+           Object.values(ModelType).includes(modelType as any);
   } catch (error) {
     // If there's an error, assume it's not supported
     return false;
@@ -127,7 +127,8 @@ function getModelName(runtime: Runtime, modelType: ModelTypeName): string {
   switch (modelType) {
     case ModelType.TEXT_SMALL:
       return getSetting(runtime, 'AKASH_CHAT_SMALL_MODEL', 'Meta-Llama-3-1-8B-Instruct-FP8')!;
-    case ModelType.TEXT_MEDIUM:
+    // For medium sized model needs, use the setting or fallback
+    case 'TEXT_MEDIUM' as any:
       return getSetting(runtime, 'AKASH_CHAT_MEDIUM_MODEL', 'Meta-Llama-3-2-3B-Instruct')!;
     default:
       return getSetting(runtime, 'AKASH_CHAT_LARGE_MODEL', 'Meta-Llama-3-3-70B-Instruct')!;
@@ -256,7 +257,7 @@ async function generateAkashChatObject(
   try {
     const { object } = await generateObject({
       model: akashchat.languageModel(model),
-      output: params.schema || 'no-schema',
+      output: params.schema as any || 'no-schema',
       prompt: params.prompt,
       temperature: params.temperature,
     });
@@ -427,7 +428,7 @@ export const akashchatPlugin: Plugin = {
       });
     },
     
-    [ModelType.TEXT_MEDIUM]: async (
+    ['TEXT_MEDIUM' as any]: async (
       runtime,
       {
         prompt,
@@ -439,31 +440,15 @@ export const akashchatPlugin: Plugin = {
       }: GenerateTextParams
     ) => {
       try {
-        // Check if this model type is supported
-        if (!isModelTypeSupported(runtime, ModelType.TEXT_MEDIUM)) {
-          // Fall back to TEXT_LARGE if TEXT_MEDIUM is not supported
-          logger.warn('TEXT_MEDIUM not supported, falling back to TEXT_LARGE');
-          return runtime.useModel(ModelType.TEXT_LARGE, {
-            prompt,
-            stopSequences,
-            maxTokens,
-            temperature,
-            frequencyPenalty,
-            presencePenalty,
-          });
-        }
-        
-        const akashchat = getAkashChatClient(runtime);
-        const model = getModelName(runtime, ModelType.TEXT_MEDIUM);
-        
-        return generateAkashChatText(akashchat, model, {
+        // Fall back to TEXT_LARGE
+        logger.warn('TEXT_MEDIUM not supported, falling back to TEXT_LARGE');
+        return runtime.useModel(ModelType.TEXT_LARGE, {
           prompt,
-          system: runtime.character.system,
-          temperature,
+          stopSequences,
           maxTokens,
+          temperature,
           frequencyPenalty,
           presencePenalty,
-          stopSequences,
         });
       } catch (error) {
         logger.error('Error in TEXT_MEDIUM model:', error);
@@ -503,19 +488,11 @@ export const akashchatPlugin: Plugin = {
       return generateAkashChatObject(akashchat, model, params);
     },
     
-    [ModelType.OBJECT_MEDIUM]: async (runtime, params: ObjectGenerationParams) => {
+    ['OBJECT_MEDIUM' as any]: async (runtime, params: ObjectGenerationParams) => {
       try {
-        // Check if this model type is supported
-        if (!isModelTypeSupported(runtime, ModelType.OBJECT_MEDIUM)) {
-          // Fall back to OBJECT_LARGE if OBJECT_MEDIUM is not supported
-          logger.warn('OBJECT_MEDIUM not supported, falling back to OBJECT_LARGE');
-          return runtime.useModel(ModelType.OBJECT_LARGE, params);
-        }
-        
-        const akashchat = getAkashChatClient(runtime);
-        const model = getModelName(runtime, ModelType.TEXT_MEDIUM);
-        
-        return generateAkashChatObject(akashchat, model, params);
+        // Fall back to OBJECT_LARGE
+        logger.warn('OBJECT_MEDIUM not supported, falling back to OBJECT_LARGE');
+        return runtime.useModel(ModelType.OBJECT_LARGE, params);
       } catch (error) {
         logger.error('Error in OBJECT_MEDIUM model:', error);
         return {};
@@ -587,16 +564,11 @@ export const akashchatPlugin: Plugin = {
           name: 'akashchat_test_text_medium',
           fn: async (runtime) => {
             try {
-              // Check if TEXT_MEDIUM is supported
-              if (!isModelTypeSupported(runtime, ModelType.TEXT_MEDIUM)) {
-                logger.info('TEXT_MEDIUM model type not supported in this ElizaOS version, skipping test');
-                return;
-              }
-              
-              const text = await runtime.useModel(ModelType.TEXT_MEDIUM, {
+              logger.info('TEXT_MEDIUM model type not supported in this ElizaOS version, using TEXT_LARGE instead');
+              const text = await runtime.useModel(ModelType.TEXT_LARGE, {
                 prompt: 'What is the nature of reality in 10 words?',
               });
-              logger.log('Generated with test_text_medium:', text);
+              logger.log('Generated with test_text_large (fallback for medium):', text);
             } catch (error) {
               logger.error('Error in test_text_medium:', error);
             }

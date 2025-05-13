@@ -30,12 +30,14 @@
     "@elizaos/plugin-bootstrap": "1.0.0-beta.49",
     "@elizaos/plugin-local-ai": "1.0.0-beta.49",
     "ai": "^4.3.13",
+    "js-tiktoken": "^1.0.13",
     "zod": "3.24.2"
   },
   "devDependencies": {
+    "esbuild": "^0.25.4",
+    "prettier": "3.5.3",
     "tsup": "8.4.0",
-    "typescript": "5.8.2",
-    "prettier": "3.5.3"
+    "typescript": "5.8.2"
   },
   "scripts": {
     "start": "elizaos start",
