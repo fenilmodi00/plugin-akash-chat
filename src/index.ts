@@ -26,6 +26,7 @@ interface Runtime {
   };
   fetch?: typeof fetch;
   hasModelHandler?: (modelType: ModelTypeName) => boolean;
+  setSetting: (key: string, value: string) => void;
 }
 
 // Cache for API clients to avoid recreating them
@@ -82,6 +83,7 @@ function getApiURL(runtime: Runtime): string {
  * Check if a model type is supported in the current ElizaOS version
  */
 function isModelTypeSupported(runtime: any, modelType: ModelTypeName): boolean {
+<<<<<<< HEAD
   try {
     // Try to access the model handler registry to see if this type is registered
     return runtime.hasModelHandler?.(modelType as any) ?? 
@@ -90,7 +92,15 @@ function isModelTypeSupported(runtime: any, modelType: ModelTypeName): boolean {
   } catch (error) {
     // If there's an error, assume it's not supported
     return false;
+=======
+  // Check if runtime already has a handler for this model type
+  if (runtime.hasModelHandler && typeof runtime.hasModelHandler === 'function') {
+    // If the runtime already has a handler, don't override it
+    return !runtime.hasModelHandler(modelType);
+>>>>>>> beta.1.0.41
   }
+  // Otherwise, declare that we support all model types
+  return true;
 }
 
 /**
@@ -127,9 +137,14 @@ function getModelName(runtime: Runtime, modelType: ModelTypeName): string {
   switch (modelType) {
     case ModelType.TEXT_SMALL:
       return getSetting(runtime, 'AKASH_CHAT_SMALL_MODEL', 'Meta-Llama-3-1-8B-Instruct-FP8')!;
+<<<<<<< HEAD
     // For medium sized model needs, use the setting or fallback
     case 'TEXT_MEDIUM' as any:
       return getSetting(runtime, 'AKASH_CHAT_MEDIUM_MODEL', 'Meta-Llama-3-2-3B-Instruct')!;
+=======
+    case ModelType.TEXT_EMBEDDING:
+      return getSetting(runtime, 'AKASHCHAT_EMBEDDING_MODEL', 'BAAI-bge-large-en-v1-5')!;
+>>>>>>> beta.1.0.41
     default:
       return getSetting(runtime, 'AKASH_CHAT_LARGE_MODEL', 'Meta-Llama-3-3-70B-Instruct')!;
   }
@@ -257,7 +272,11 @@ async function generateAkashChatObject(
   try {
     const { object } = await generateObject({
       model: akashchat.languageModel(model),
+<<<<<<< HEAD
       output: params.schema as any || 'no-schema',
+=======
+      output: 'no-schema',
+>>>>>>> beta.1.0.41
       prompt: params.prompt,
       temperature: params.temperature,
     });
@@ -281,15 +300,30 @@ export const akashchatPlugin: Plugin = {
   config: {
     AKASH_CHAT_API_KEY: process.env.AKASH_CHAT_API_KEY,
     AKASH_CHAT_SMALL_MODEL: process.env.AKASH_CHAT_SMALL_MODEL || 'Meta-Llama-3-1-8B-Instruct-FP8',
-    AKASH_CHAT_MEDIUM_MODEL: process.env.AKASH_CHAT_MEDIUM_MODEL || 'Meta-Llama-3-2-3B-Instruct',
     AKASH_CHAT_LARGE_MODEL: process.env.AKASH_CHAT_LARGE_MODEL || 'Meta-Llama-3-3-70B-Instruct',
     AKASHCHAT_EMBEDDING_MODEL: process.env.AKASHCHAT_EMBEDDING_MODEL || 'BAAI-bge-large-en-v1-5',
     AKASHCHAT_EMBEDDING_DIMENSIONS: process.env.AKASHCHAT_EMBEDDING_DIMENSIONS || '1024',
   },
   
   async init(config: Record<string, string>, runtime: any) {
+    // Force disable local models
+    if (process.env) {
+      process.env.USE_LOCAL_AI = 'false';
+      process.env.USE_STUDIOLM_TEXT_MODELS = 'false';
+      process.env.USE_OLLAMA_TEXT_MODELS = 'false'; 
+    }
+    
+    // Apply settings to runtime if available
+    if (runtime && runtime.setSetting) {
+      runtime.setSetting('USE_LOCAL_AI', 'false');
+      runtime.setSetting('USE_STUDIOLM_TEXT_MODELS', 'false');
+      runtime.setSetting('USE_OLLAMA_TEXT_MODELS', 'false');
+    }
+    
     const apiKey = getApiKey(runtime);
     if (!apiKey) {
+      logger.error('Missing AKASH_CHAT_API_KEY in environment variables or settings');
+      logger.error('Please add AKASH_CHAT_API_KEY to your .env file or Eliza character settings');
       throw Error('Missing AKASH_CHAT_API_KEY in environment variables or settings');
     }
     
@@ -299,18 +333,26 @@ export const akashchatPlugin: Plugin = {
     // Validate API key
     try {
       const baseURL = getBaseURL();
+      logger.info(`Connecting to Akash Chat API at ${baseURL}`);
+      
       const response = await fetch(`${baseURL}/models`, {
         headers: { Authorization: `Bearer ${apiKey}` },
       });
       
       if (!response.ok) {
-        logger.warn(`API key validation failed: ${response.status} ${response.statusText}`);
+        logger.error(`Akash Chat API key validation failed: ${response.status} ${response.statusText}`);
+        logger.error('Please check your API key and ensure it is valid');
+        throw new Error(`API key validation failed: ${response.status} ${response.statusText}`);
       } else {
         const data = await response.json();
-        logger.info(`Akash Chat API connected successfully. Models available: ${(data as any)?.data?.length || 0}`);
+        const modelsCount = (data as any)?.data?.length || 0;
+        logger.info(`✅ Akash Chat API connected successfully. Models available: ${modelsCount}`);
+        
+     
       }
     } catch (error) {
-      logger.warn('Could not validate Akash Chat API key:', error);
+      logger.error('Failed to validate Akash Chat API key:', error);
+      throw new Error('Failed to validate Akash Chat API key. Please check your connection and API key validity.');
     }
   },
   
@@ -428,6 +470,7 @@ export const akashchatPlugin: Plugin = {
       });
     },
     
+<<<<<<< HEAD
     ['TEXT_MEDIUM' as any]: async (
       runtime,
       {
@@ -456,6 +499,8 @@ export const akashchatPlugin: Plugin = {
       }
     },
     
+=======
+>>>>>>> beta.1.0.41
     [ModelType.TEXT_LARGE]: async (
       runtime,
       {
@@ -488,6 +533,7 @@ export const akashchatPlugin: Plugin = {
       return generateAkashChatObject(akashchat, model, params);
     },
     
+<<<<<<< HEAD
     ['OBJECT_MEDIUM' as any]: async (runtime, params: ObjectGenerationParams) => {
       try {
         // Fall back to OBJECT_LARGE
@@ -499,6 +545,8 @@ export const akashchatPlugin: Plugin = {
       }
     },
     
+=======
+>>>>>>> beta.1.0.41
     [ModelType.OBJECT_LARGE]: async (runtime, params: ObjectGenerationParams) => {
       const akashchat = getAkashChatClient(runtime);
       const model = getModelName(runtime, ModelType.TEXT_LARGE);
@@ -561,6 +609,7 @@ export const akashchatPlugin: Plugin = {
           },
         },
         {
+<<<<<<< HEAD
           name: 'akashchat_test_text_medium',
           fn: async (runtime) => {
             try {
@@ -575,6 +624,8 @@ export const akashchatPlugin: Plugin = {
           },
         },
         {
+=======
+>>>>>>> beta.1.0.41
           name: 'akashchat_test_text_small',
           fn: async (runtime) => {
             try {
