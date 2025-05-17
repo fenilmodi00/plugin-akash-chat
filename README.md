@@ -1,62 +1,53 @@
-cat > README.md << EOL
-# Akash Chat Plugin for ElizaOS
+# Akash Chat API Plugin for Eliza
 
-This plugin integrates Akash Chat API with ElizaOS, providing a complete replacement for OpenAI API functionality. It supports text generation, embeddings, tokenization, and object generation.
+This plugin integrates the Akash Chat API with Eliza, allowing characters to use language models hosted on the Akash Network.
 
-## Features
+## Setup Instructions
 
-- Text generation (small, medium, and large models)
-- Text embeddings using BAAI-bge-large-en-v1-5
-- Tokenization (encode/decode)
-- JSON object generation
-- Rate limit handling with automatic retries
-- Cloudflare Gateway support (optional)
+1. **Create a `.env` file in the plugin directory**:
+   ```
+   cp .env.example .env
+   ```
 
-## Setup
+2. **Add your Akash Chat API key to the `.env` file**:
+   ```
+   AKASH_CHAT_API_KEY=your_akash_chat_api_key_here
+   ```
 
-1. Install the plugin:
-\`\`\`bash
-npm install @elizaos/plugin-akash-chat
-\`\`\`
+3. **Configure model selections (optional)**:
+   You can customize which models to use by setting these environment variables:
+   ```
+   AKASH_CHAT_SMALL_MODEL=Meta-Llama-3-1-8B-Instruct-FP8
+   AKASH_CHAT_LARGE_MODEL=Meta-Llama-3-3-70B-Instruct
+   AKASHCHAT_EMBEDDING_MODEL=BAAI-bge-large-en-v1-5
+   ```
 
-2. Configure your environment variables:
-\`\`\`
-AKASH_CHAT_API_KEY=your_api_key_here
-\`\`\`
+## Usage in Character Files
 
-3. Add to your agent configuration:
-\`\`\`json
+To use this plugin with a character, add it to your character's `.character.json` file:
+
+```json
 {
-  "name": "MyAgent",
-  "plugins": ["@elizaos/plugin-akash-chat"],
-  "settings": {
-    "secrets": {
-      "AKASH_CHAT_API_KEY": "your_api_key_here"
-    }
-  }
+  "plugins": ["akashchat"],
+  "modelProvider": "akashchat"
 }
-\`\`\`
+```
 
-## Configuration Options
+## Troubleshooting
 
-| Setting | Description | Default |
-|---------|-------------|---------|
-| \`AKASH_CHAT_API_KEY\` | Your Akash Chat API key | (Required) |
-| \`AKASH_CHAT_SMALL_MODEL\` | Model to use for small text generation | Meta-Llama-3-1-8B-Instruct-FP8 |
-| \`AKASH_CHAT_MEDIUM_MODEL\` | Model to use for medium text generation | Meta-Llama-3-2-3B-Instruct |
-| \`AKASH_CHAT_LARGE_MODEL\` | Model to use for large text generation | Meta-Llama-3-3-70B-Instruct |
-| \`AKASHCHAT_EMBEDDING_MODEL\` | Model to use for embeddings | BAAI-bge-large-en-v1-5 |
-| \`AKASHCHAT_EMBEDDING_DIMENSIONS\` | Dimensions for embeddings | 1024 |
+If you encounter model downloading issues:
+
+1. Make sure the API key is correctly set in your `.env` file
+2. Verify that the modelProvider in your character file is set to "akashchat"
+3. Check logs for any API connection errors
 
 ## Available Models
 
-The plugin supports all models available on Akash Chat API, including:
-- Meta-Llama-3-1-8B-Instruct-FP8
-- Meta-Llama-3-2-3B-Instruct
-- Meta-Llama-3-3-70B-Instruct
-- Meta-Llama-3-3-8B-Instruct
-- DeepSeek-R1-Distill-Llama-70B
-- DeepSeek-R1-Distill-Qwen-14B
-- DeepSeek-R1-Distill-Qwen-32B
-- BAAI-bge-large-en-v1-5 (embeddings)
-EOL
+The plugin supports various Akash Chat API models:
+- Text generation (small): Meta-Llama-3-1-8B-Instruct-FP8
+- Text generation (large): Meta-Llama-3-3-70B-Instruct
+- Embeddings: BAAI-bge-large-en-v1-5
+
+## License
+
+MIT

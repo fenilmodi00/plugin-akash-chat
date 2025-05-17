@@ -26,6 +26,7 @@ interface Runtime {
   };
   fetch?: typeof fetch;
   hasModelHandler?: (modelType: ModelTypeName) => boolean;
+  setSetting: (key: string, value: string) => void;
 }
 
 // Cache for API clients to avoid recreating them
@@ -82,7 +83,12 @@ function getApiURL(runtime: Runtime): string {
  * Check if a model type is supported in the current ElizaOS version
  */
 function isModelTypeSupported(runtime: any, modelType: ModelTypeName): boolean {
-  // Always return true to force Akash API usage
+  // Check if runtime already has a handler for this model type
+  if (runtime.hasModelHandler && typeof runtime.hasModelHandler === 'function') {
+    // If the runtime already has a handler, don't override it
+    return !runtime.hasModelHandler(modelType);
+  }
+  // Otherwise, declare that we support all model types
   return true;
 }
 
@@ -279,8 +285,24 @@ export const akashchatPlugin: Plugin = {
   },
   
   async init(config: Record<string, string>, runtime: any) {
+    // Force disable local models
+    if (process.env) {
+      process.env.USE_LOCAL_AI = 'false';
+      process.env.USE_STUDIOLM_TEXT_MODELS = 'false';
+      process.env.USE_OLLAMA_TEXT_MODELS = 'false'; 
+    }
+    
+    // Apply settings to runtime if available
+    if (runtime && runtime.setSetting) {
+      runtime.setSetting('USE_LOCAL_AI', 'false');
+      runtime.setSetting('USE_STUDIOLM_TEXT_MODELS', 'false');
+      runtime.setSetting('USE_OLLAMA_TEXT_MODELS', 'false');
+    }
+    
     const apiKey = getApiKey(runtime);
     if (!apiKey) {
+      logger.error('Missing AKASH_CHAT_API_KEY in environment variables or settings');
+      logger.error('Please add AKASH_CHAT_API_KEY to your .env file or Eliza character settings');
       throw Error('Missing AKASH_CHAT_API_KEY in environment variables or settings');
     }
     
@@ -290,18 +312,26 @@ export const akashchatPlugin: Plugin = {
     // Validate API key
     try {
       const baseURL = getBaseURL();
+      logger.info(`Connecting to Akash Chat API at ${baseURL}`);
+      
       const response = await fetch(`${baseURL}/models`, {
         headers: { Authorization: `Bearer ${apiKey}` },
       });
       
       if (!response.ok) {
-        logger.warn(`API key validation failed: ${response.status} ${response.statusText}`);
+        logger.error(`Akash Chat API key validation failed: ${response.status} ${response.statusText}`);
+        logger.error('Please check your API key and ensure it is valid');
+        throw new Error(`API key validation failed: ${response.status} ${response.statusText}`);
       } else {
         const data = await response.json();
-        logger.info(`Akash Chat API connected successfully. Models available: ${(data as any)?.data?.length || 0}`);
+        const modelsCount = (data as any)?.data?.length || 0;
+        logger.info(`✅ Akash Chat API connected successfully. Models available: ${modelsCount}`);
+        
+     
       }
     } catch (error) {
-      logger.warn('Could not validate Akash Chat API key:', error);
+      logger.error('Failed to validate Akash Chat API key:', error);
+      throw new Error('Failed to validate Akash Chat API key. Please check your connection and API key validity.');
     }
   },
   
