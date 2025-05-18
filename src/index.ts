@@ -127,9 +127,6 @@ function getModelName(runtime: Runtime, modelType: ModelTypeName): string {
   switch (modelType) {
     case ModelType.TEXT_SMALL:
       return getSetting(runtime, 'AKASH_CHAT_SMALL_MODEL', 'Meta-Llama-3-1-8B-Instruct-FP8')!;
-    // For medium sized model needs, use the setting or fallback
-    case 'TEXT_MEDIUM' as any:
-      return getSetting(runtime, 'AKASH_CHAT_MEDIUM_MODEL', 'Meta-Llama-3-2-3B-Instruct')!;
     default:
       return getSetting(runtime, 'AKASH_CHAT_LARGE_MODEL', 'Meta-Llama-3-3-70B-Instruct')!;
   }
@@ -281,7 +278,6 @@ export const akashchatPlugin: Plugin = {
   config: {
     AKASH_CHAT_API_KEY: process.env.AKASH_CHAT_API_KEY,
     AKASH_CHAT_SMALL_MODEL: process.env.AKASH_CHAT_SMALL_MODEL || 'Meta-Llama-3-1-8B-Instruct-FP8',
-    AKASH_CHAT_MEDIUM_MODEL: process.env.AKASH_CHAT_MEDIUM_MODEL || 'Meta-Llama-3-2-3B-Instruct',
     AKASH_CHAT_LARGE_MODEL: process.env.AKASH_CHAT_LARGE_MODEL || 'Meta-Llama-3-3-70B-Instruct',
     AKASHCHAT_EMBEDDING_MODEL: process.env.AKASHCHAT_EMBEDDING_MODEL || 'BAAI-bge-large-en-v1-5',
     AKASHCHAT_EMBEDDING_DIMENSIONS: process.env.AKASHCHAT_EMBEDDING_DIMENSIONS || '1024',
@@ -307,7 +303,7 @@ export const akashchatPlugin: Plugin = {
         logger.warn(`API key validation failed: ${response.status} ${response.statusText}`);
       } else {
         const data = await response.json();
-        logger.info(`Akash Chat API connected successfully. Models available: ${(data as any)?.data?.length || 0}`);
+        logger.info(`✅ Akash Chat API connected successfully. Models available: ${(data as any)?.data?.length || 0}`);
       }
     } catch (error) {
       logger.warn('Could not validate Akash Chat API key:', error);
@@ -428,34 +424,6 @@ export const akashchatPlugin: Plugin = {
       });
     },
     
-    ['TEXT_MEDIUM' as any]: async (
-      runtime,
-      {
-        prompt,
-        stopSequences = [],
-        maxTokens = 8192,
-        temperature = 0.7,
-        frequencyPenalty = 0.7,
-        presencePenalty = 0.7,
-      }: GenerateTextParams
-    ) => {
-      try {
-        // Fall back to TEXT_LARGE
-        logger.warn('TEXT_MEDIUM not supported, falling back to TEXT_LARGE');
-        return runtime.useModel(ModelType.TEXT_LARGE, {
-          prompt,
-          stopSequences,
-          maxTokens,
-          temperature,
-          frequencyPenalty,
-          presencePenalty,
-        });
-      } catch (error) {
-        logger.error('Error in TEXT_MEDIUM model:', error);
-        return 'Error generating text. Please try again later.';
-      }
-    },
-    
     [ModelType.TEXT_LARGE]: async (
       runtime,
       {
@@ -486,17 +454,6 @@ export const akashchatPlugin: Plugin = {
       const model = getModelName(runtime, ModelType.TEXT_SMALL);
       
       return generateAkashChatObject(akashchat, model, params);
-    },
-    
-    ['OBJECT_MEDIUM' as any]: async (runtime, params: ObjectGenerationParams) => {
-      try {
-        // Fall back to OBJECT_LARGE
-        logger.warn('OBJECT_MEDIUM not supported, falling back to OBJECT_LARGE');
-        return runtime.useModel(ModelType.OBJECT_LARGE, params);
-      } catch (error) {
-        logger.error('Error in OBJECT_MEDIUM model:', error);
-        return {};
-      }
     },
     
     [ModelType.OBJECT_LARGE]: async (runtime, params: ObjectGenerationParams) => {
@@ -557,20 +514,6 @@ export const akashchatPlugin: Plugin = {
               logger.log('Generated with test_text_large:', text);
             } catch (error) {
               logger.error('Error in test_text_large:', error);
-            }
-          },
-        },
-        {
-          name: 'akashchat_test_text_medium',
-          fn: async (runtime) => {
-            try {
-              logger.info('TEXT_MEDIUM model type not supported in this ElizaOS version, using TEXT_LARGE instead');
-              const text = await runtime.useModel(ModelType.TEXT_LARGE, {
-                prompt: 'What is the nature of reality in 10 words?',
-              });
-              logger.log('Generated with test_text_large (fallback for medium):', text);
-            } catch (error) {
-              logger.error('Error in test_text_medium:', error);
             }
           },
         },
