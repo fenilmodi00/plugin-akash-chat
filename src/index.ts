@@ -1,157 +1,121 @@
 import { createOpenAI } from '@ai-sdk/openai';
 import type {
+  DetokenizeTextParams,
+  GenerateTextParams,
+  IAgentRuntime,
   ModelTypeName,
   ObjectGenerationParams,
   Plugin,
   TextEmbeddingParams,
+  TokenizeTextParams,
 } from '@elizaos/core';
 import {
-  type DetokenizeTextParams,
-  type GenerateTextParams,
-  ModelType,
-  type TokenizeTextParams,
+  EventType,
   logger,
+  ModelType,
   VECTOR_DIMS,
 } from '@elizaos/core';
-import { generateObject, generateText } from 'ai';
-import { type TiktokenModel, encodingForModel } from 'js-tiktoken';
+import {
+  generateObject,
+  generateText,
+  JSONParseError,
+  type JSONValue,
+  type LanguageModelUsage,
+} from 'ai';
+import { encodingForModel, type TiktokenModel } from 'js-tiktoken';
+import { fetch } from 'undici';
 
 /**
- * Runtime interface for the AkashChat plugin
+ * Retrieves a configuration setting from the runtime, falling back to environment variables or a default value if not found.
+ *
+ * @param key - The name of the setting to retrieve.
+ * @param defaultValue - The value to return if the setting is not found in the runtime or environment.
+ * @returns The resolved setting value, or defaultValue if not found.
  */
-interface Runtime {
-  getSetting(key: string): string | undefined;
-  character: {
-    system?: string;
-  };
-  fetch?: typeof fetch;
-  hasModelHandler?: (modelType: ModelTypeName) => boolean;
-}
-
-// Cache for API clients to avoid recreating them
-const clientCache = new Map<string, ReturnType<typeof createOpenAI>>();
-
-// Cache for tokenizers to avoid recreating them
-const tokenizerCache = new Map<string, any>();
-
-/**
- * Helper function to get settings with fallback to process.env
- */
-function getSetting(runtime: any, key: string, defaultValue?: string): string | undefined {
+function getSetting(
+  runtime: IAgentRuntime,
+  key: string,
+  defaultValue?: string
+): string | undefined {
   return runtime.getSetting(key) ?? process.env[key] ?? defaultValue;
 }
 
 /**
- * Helper function to get the base URL for AkashChat API
+ * Retrieves the Akash Chat API base URL from runtime settings, environment variables, or defaults.
+ *
+ * @returns The resolved base URL for Akash Chat API requests.
  */
-function getBaseURL(): string {
-  return 'https://chatapi.akash.network/api/v1';
+function getBaseURL(runtime: IAgentRuntime): string {
+  const baseURL = getSetting(runtime, 'AKASH_CHAT_BASE_URL', 'https://chatapi.akash.network/api/v1') as string;
+  logger.debug(`[AkashChat] Using base URL: ${baseURL}`);
+  return baseURL;
 }
 
 /**
- * Helper function to get the API key for AkashChat
+ * Helper function to get the API key for Akash Chat
+ *
+ * @param runtime The runtime context
+ * @returns The configured API key
  */
-function getApiKey(runtime: any): string | undefined {
+function getApiKey(runtime: IAgentRuntime): string | undefined {
   return getSetting(runtime, 'AKASH_CHAT_API_KEY');
 }
 
 /**
- * Gets the API URL to use, with Cloudflare Gateway support if enabled
+ * Helper function to get the small model name with fallbacks
+ *
+ * @param runtime The runtime context
+ * @returns The configured small model name
  */
-function getApiURL(runtime: Runtime): string {
-  try {
-    const isCloudflareEnabled = runtime.getSetting('CLOUDFLARE_GW_ENABLED') === 'true';
-    if (!isCloudflareEnabled) {
-      return getBaseURL();
-    }
-
-    const cloudflareAccountId = runtime.getSetting('CLOUDFLARE_AI_ACCOUNT_ID');
-    const cloudflareGatewayId = runtime.getSetting('CLOUDFLARE_AI_GATEWAY_ID');
-    
-    if (!cloudflareAccountId || !cloudflareGatewayId) {
-      return getBaseURL();
-    }
-    
-    return `https://gateway.ai.cloudflare.com/v1/${cloudflareAccountId}/${cloudflareGatewayId}/akashchat`;
-  } catch (error) {
-    return getBaseURL();
-  }
+function getSmallModel(runtime: IAgentRuntime): string {
+  return getSetting(runtime, 'AKASH_CHAT_SMALL_MODEL', 'Meta-Llama-3-1-8B-Instruct-FP8') as string;
 }
 
 /**
- * Check if a model type is supported in the current ElizaOS version
+ * Helper function to get the large model name with fallbacks
+ *
+ * @param runtime The runtime context
+ * @returns The configured large model name
  */
-function isModelTypeSupported(runtime: any, modelType: ModelTypeName): boolean {
-  try {
-    // Try to access the model handler registry to see if this type is registered
-    return runtime.hasModelHandler?.(modelType as any) ?? 
-           // Fallback check for older versions
-           Object.values(ModelType).includes(modelType as any);
-  } catch (error) {
-    // If there's an error, assume it's not supported
-    return false;
-  }
+function getLargeModel(runtime: IAgentRuntime): string {
+  return getSetting(runtime, 'AKASH_CHAT_LARGE_MODEL', 'Meta-Llama-3-3-70B-Instruct') as string;
 }
 
 /**
- * Get or create an API client for Akash Chat
+ * Helper function to get the embedding model name
+ *
+ * @param runtime The runtime context
+ * @returns The configured embedding model name
  */
-function getAkashChatClient(runtime: Runtime): ReturnType<typeof createOpenAI> {
-  const baseURL = getApiURL(runtime);
-  const apiKey = getApiKey(runtime);
-  
-  // Create a cache key based on the API URL and key
-  const cacheKey = `${baseURL}:${apiKey}`;
-  
-  // Return cached client if available
-  if (clientCache.has(cacheKey)) {
-    return clientCache.get(cacheKey)!;
-  }
-  
-  // Create new client
-  const client = createOpenAI({
-    apiKey: apiKey!,
-    fetch: runtime.fetch,
-    baseURL,
+function getEmbeddingModel(runtime: IAgentRuntime): string {
+  return getSetting(runtime, 'AKASH_CHAT_EMBEDDING_MODEL', 'BAAI-bge-large-en-v1-5') as string;
+}
+
+/**
+ * Create an Akash Chat client with proper configuration
+ *
+ * @param runtime The runtime context
+ * @returns Configured OpenAI client pointing to Akash Chat
+ */
+function createAkashChatClient(runtime: IAgentRuntime) {
+  return createOpenAI({
+    apiKey: getApiKey(runtime),
+    baseURL: getBaseURL(runtime),
   });
-  
-  // Cache the client
-  clientCache.set(cacheKey, client);
-  return client;
 }
 
 /**
- * Maps ElizaOS model types to Akash Chat model names
+ * Asynchronously tokenizes the given text based on the specified model and prompt.
+ *
+ * @param model - The type of model to use for tokenization.
+ * @param prompt - The text prompt to tokenize.
+ * @returns An array of tokens representing the encoded prompt.
  */
-function getModelName(runtime: Runtime, modelType: ModelTypeName): string {
-  switch (modelType) {
-    case ModelType.TEXT_SMALL:
-      return getSetting(runtime, 'AKASH_CHAT_SMALL_MODEL', 'Meta-Llama-3-1-8B-Instruct-FP8')!;
-    default:
-      return getSetting(runtime, 'AKASH_CHAT_LARGE_MODEL', 'Meta-Llama-3-3-70B-Instruct')!;
-  }
-}
-
-/**
- * Get a tokenizer for the specified model, with caching
- */
-function getTokenizer(modelName: string) {
-  if (tokenizerCache.has(modelName)) {
-    return tokenizerCache.get(modelName);
-  }
-  
-  const encoding = encodingForModel(modelName as TiktokenModel);
-  tokenizerCache.set(modelName, encoding);
-  return encoding;
-}
-
-/**
- * Tokenizes text using the specified model
- */
-async function tokenizeText(runtime: Runtime, model: ModelTypeName, prompt: string) {
+async function tokenizeText(model: ModelTypeName, prompt: string): Promise<number[]> {
   try {
-    const modelName = getModelName(runtime, model);
-    const encoding = getTokenizer(modelName);
+    // Use OpenAI-compatible model names for tokenization since Akash models aren't supported by js-tiktoken
+    const modelName = model === ModelType.TEXT_SMALL ? 'gpt-4o-mini' : 'gpt-4o';
+    const encoding = encodingForModel(modelName as TiktokenModel);
     return encoding.encode(prompt);
   } catch (error) {
     logger.error('Error in tokenizeText:', error);
@@ -160,12 +124,17 @@ async function tokenizeText(runtime: Runtime, model: ModelTypeName, prompt: stri
 }
 
 /**
- * Detokenize a sequence of tokens back into text using the specified model
+ * Detokenize a sequence of tokens back into text using the specified model.
+ *
+ * @param model - The type of model to use for detokenization.
+ * @param tokens - The sequence of tokens to detokenize.
+ * @returns The detokenized text.
  */
-async function detokenizeText(runtime: Runtime, model: ModelTypeName, tokens: number[]) {
+async function detokenizeText(model: ModelTypeName, tokens: number[]): Promise<string> {
   try {
-    const modelName = getModelName(runtime, model);
-    const encoding = getTokenizer(modelName);
+    // Use OpenAI-compatible model names for tokenization since Akash models aren't supported by js-tiktoken
+    const modelName = model === ModelType.TEXT_SMALL ? 'gpt-4o-mini' : 'gpt-4o';
+    const encoding = encodingForModel(modelName as TiktokenModel);
     return encoding.decode(tokens);
   } catch (error) {
     logger.error('Error in detokenizeText:', error);
@@ -174,214 +143,274 @@ async function detokenizeText(runtime: Runtime, model: ModelTypeName, tokens: nu
 }
 
 /**
- * Handles rate limit errors with exponential backoff
+ * Helper function to generate objects using specified model type
  */
-async function handleRateLimitError(error: Error, retryFn: () => Promise<unknown>, retryCount = 0) {
-  if (!error.message.includes('Rate limit')) {
-    throw error;
-  }
-  
-  // Extract retry delay from error message if possible
-  let retryDelay = Math.min(10000 * Math.pow(1.5, retryCount), 60000); // Exponential backoff with 1 minute max
-  const delayMatch = error.message.match(/try again in (\d+\.?\d*)s/i);
-  
-  if (delayMatch?.[1]) {
-    // Convert to milliseconds and add a small buffer
-    retryDelay = Math.ceil(Number.parseFloat(delayMatch[1]) * 1000) + 500;
-  }
-  
-  logger.info(`Rate limit reached. Retrying after ${retryDelay}ms (attempt ${retryCount + 1})`);
-  await new Promise((resolve) => setTimeout(resolve, retryDelay));
-  
-  try {
-    return await retryFn();
-  } catch (retryError: any) {
-    if (retryError.message.includes('Rate limit') && retryCount < 3) {
-      return handleRateLimitError(retryError, retryFn, retryCount + 1);
-    }
-    throw retryError;
-  }
-}
+async function generateObjectByModelType(
+  runtime: IAgentRuntime,
+  params: ObjectGenerationParams,
+  modelType: string,
+  getModelFn: (runtime: IAgentRuntime) => string
+): Promise<JSONValue> {
+  const akashChat = createAkashChatClient(runtime);
+  const modelName = getModelFn(runtime);
+  logger.log(`[AkashChat] Using ${modelType} model: ${modelName}`);
+  const temperature = params.temperature ?? 0;
 
-/**
- * Generate text using AkashChat API with optimized handling
- */
-async function generateAkashChatText(
-  akashchat: ReturnType<typeof createOpenAI>,
-  model: string,
-  params: {
-    prompt: string;
-    system?: string;
-    temperature: number;
-    maxTokens: number;
-    frequencyPenalty: number;
-    presencePenalty: number;
-    stopSequences: string[];
-  }
-) {
   try {
-    const { text } = await generateText({
-      model: akashchat.languageModel(model),
+    const { object, usage } = await generateObject({
+      model: akashChat.languageModel(modelName),
+      output: 'no-schema',
       prompt: params.prompt,
-      system: params.system,
-      temperature: params.temperature,
-      maxTokens: params.maxTokens,
-      frequencyPenalty: params.frequencyPenalty,
-      presencePenalty: params.presencePenalty,
-      stopSequences: params.stopSequences,
+      temperature: temperature,
+      experimental_repairText: getJsonRepairFunction(),
     });
-    return text;
-  } catch (error: unknown) {
-    if (error instanceof Error && error.message.includes('Rate limit')) {
-      return handleRateLimitError(error, () => 
-        generateAkashChatText(akashchat, model, params)
-      ) as Promise<string>;
-    }
-    
-    logger.error('Error generating text:', error);
-    return 'Error generating text. Please try again later.';
-  }
-}
 
-/**
- * Generate object using AkashChat API with optimized handling
- */
-async function generateAkashChatObject(
-  akashchat: ReturnType<typeof createOpenAI>,
-  model: string,
-  params: ObjectGenerationParams
-) {
-  try {
-    const { object } = await generateObject({
-      model: akashchat.languageModel(model),
-      output: params.schema as any || 'no-schema',
-      prompt: params.prompt,
-      temperature: params.temperature,
-    });
+    if (usage) {
+      emitModelUsageEvent(runtime, modelType as ModelTypeName, params.prompt, usage);
+    }
     return object;
   } catch (error: unknown) {
-    if (error instanceof Error && error.message.includes('Rate limit')) {
-      return handleRateLimitError(error, () => 
-        generateAkashChatObject(akashchat, model, params)
-      );
+    if (error instanceof JSONParseError) {
+      logger.error(`[generateObject] Failed to parse JSON: ${error.message}`);
+
+      const repairFunction = getJsonRepairFunction();
+      const repairedJsonString = await repairFunction({
+        text: error.text,
+        error,
+      });
+
+      if (repairedJsonString) {
+        try {
+          const repairedObject = JSON.parse(repairedJsonString);
+          logger.info('[generateObject] Successfully repaired JSON.');
+          return repairedObject;
+        } catch (repairParseError: unknown) {
+          const message = repairParseError instanceof Error ? repairParseError.message : String(repairParseError);
+          logger.error(`[generateObject] Failed to parse repaired JSON: ${message}`);
+          throw repairParseError;
+        }
+      } else {
+        logger.error('[generateObject] JSON repair failed.');
+        throw error;
+      }
+    } else {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error(`[generateObject] Unknown error: ${message}`);
+      throw error;
     }
-    
-    logger.error('Error generating object:', error);
-    return {};
   }
+}
+
+/**
+ * Returns a function to repair JSON text
+ */
+function getJsonRepairFunction(): (params: {
+  text: string;
+  error: unknown;
+}) => Promise<string | null> {
+  return async ({ text, error }: { text: string; error: unknown }) => {
+    try {
+      if (error instanceof JSONParseError) {
+        const cleanedText = text.replace(/```json\n|\n```|```/g, '');
+        JSON.parse(cleanedText);
+        return cleanedText;
+      }
+      return null;
+    } catch (jsonError: unknown) {
+      const message = jsonError instanceof Error ? jsonError.message : String(jsonError);
+      logger.warn(`Failed to repair JSON text: ${message}`);
+      return null;
+    }
+  };
+}
+
+/**
+ * Emits a model usage event
+ * @param runtime The runtime context
+ * @param type The model type
+ * @param prompt The prompt used
+ * @param usage The LLM usage data
+ */
+function emitModelUsageEvent(
+  runtime: IAgentRuntime,
+  type: ModelTypeName,
+  prompt: string,
+  usage: LanguageModelUsage
+) {
+  runtime.emitEvent(EventType.MODEL_USED, {
+    provider: 'akashchat',
+    type,
+    prompt,
+    tokens: {
+      prompt: usage.promptTokens,
+      completion: usage.completionTokens,
+      total: usage.totalTokens,
+    },
+  });
 }
 
 export const akashchatPlugin: Plugin = {
   name: 'akashchat',
-  description: 'AkashChat API plugin for language model capabilities via Akash Network',
+  description: 'Akash Chat API plugin for language model capabilities via Akash Network',
   
   config: {
     AKASH_CHAT_API_KEY: process.env.AKASH_CHAT_API_KEY,
-    AKASH_CHAT_SMALL_MODEL: process.env.AKASH_CHAT_SMALL_MODEL || 'Meta-Llama-3-1-8B-Instruct-FP8',
-    AKASH_CHAT_LARGE_MODEL: process.env.AKASH_CHAT_LARGE_MODEL || 'Meta-Llama-3-3-70B-Instruct',
-    AKASHCHAT_EMBEDDING_MODEL: process.env.AKASHCHAT_EMBEDDING_MODEL || 'BAAI-bge-large-en-v1-5',
-    AKASHCHAT_EMBEDDING_DIMENSIONS: process.env.AKASHCHAT_EMBEDDING_DIMENSIONS || '1024',
+    AKASH_CHAT_BASE_URL: process.env.AKASH_CHAT_BASE_URL,
+    AKASH_CHAT_SMALL_MODEL: process.env.AKASH_CHAT_SMALL_MODEL,
+    AKASH_CHAT_LARGE_MODEL: process.env.AKASH_CHAT_LARGE_MODEL,
+    AKASH_CHAT_EMBEDDING_MODEL: process.env.AKASH_CHAT_EMBEDDING_MODEL,
+    AKASH_CHAT_EMBEDDING_DIMENSIONS: process.env.AKASH_CHAT_EMBEDDING_DIMENSIONS,
   },
   
-  async init(config: Record<string, string>, runtime: any) {
-    const apiKey = getApiKey(runtime);
-    if (!apiKey) {
-      throw Error('Missing AKASH_CHAT_API_KEY in environment variables or settings');
-    }
-    
-    // Pre-warm the client cache
-    getAkashChatClient(runtime);
-    
-    // Validate API key
+  async init(_config: Record<string, string>, runtime: IAgentRuntime) {
     try {
-      const baseURL = getBaseURL();
-      const response = await fetch(`${baseURL}/models`, {
-        headers: { Authorization: `Bearer ${apiKey}` },
-      });
+      const apiKey = getApiKey(runtime);
+      logger.log(`[AkashChat Init] API Key present: ${!!apiKey}`);
       
-      if (!response.ok) {
-        logger.warn(`API key validation failed: ${response.status} ${response.statusText}`);
-      } else {
-        const data = await response.json();
-        logger.info(`✅ Akash Chat API connected successfully. Models available: ${(data as any)?.data?.length || 0}`);
+      if (!apiKey) {
+        logger.warn(
+          'AKASH_CHAT_API_KEY is not set - Akash Chat functionality will be limited'
+        );
+        return;
       }
-    } catch (error) {
-      logger.warn('Could not validate Akash Chat API key:', error);
+
+      try {
+        const baseURL = getBaseURL(runtime);
+        logger.log(`[AkashChat Init] Using base URL: ${baseURL}`);
+        logger.log(`[AkashChat Init] Making request to: ${baseURL}/models`);
+        
+        const response = await fetch(`${baseURL}/models`, {
+          headers: { 
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+          },
+        });
+        
+        logger.log(`[AkashChat Init] Response status: ${response.status}`);
+        
+        if (!response.ok) {
+          logger.warn(`Akash Chat API key validation failed: ${response.statusText}`);
+          logger.warn('Akash Chat functionality will be limited until a valid API key is provided');
+        } else {
+          const data = await response.json();
+          logger.log(`✅ Akash Chat API connected successfully. Models available: ${(data as any)?.data?.length || 0}`);
+        }
+      } catch (fetchError: unknown) {
+        const message = fetchError instanceof Error ? fetchError.message : String(fetchError);
+        logger.warn(`Error validating Akash Chat API key: ${message}`);
+        logger.warn('Akash Chat functionality will be limited until a valid API key is provided');
+      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.warn(
+        `Akash Chat plugin configuration issue: ${message} - You need to configure the AKASH_CHAT_API_KEY in your environment variables`
+      );
     }
   },
   
   models: {
     [ModelType.TEXT_EMBEDDING]: async (
-      runtime,
+      runtime: IAgentRuntime,
       params: TextEmbeddingParams | string | null
     ): Promise<number[]> => {
+      const embeddingModelName = getEmbeddingModel(runtime);
       const embeddingDimension = parseInt(
-        getSetting(runtime, 'AKASHCHAT_EMBEDDING_DIMENSIONS', '1024')
+        getSetting(runtime, 'AKASH_CHAT_EMBEDDING_DIMENSIONS', '1024') || '1024',
+        10
       ) as (typeof VECTOR_DIMS)[keyof typeof VECTOR_DIMS];
       
-      // Validate embedding dimension
+      logger.debug(
+        `[AkashChat] Using embedding model: ${embeddingModelName} with dimension: ${embeddingDimension}`
+      );
+
       if (!Object.values(VECTOR_DIMS).includes(embeddingDimension)) {
-        logger.error(`Invalid embedding dimension: ${embeddingDimension}`);
-        throw new Error(`Invalid embedding dimension: ${embeddingDimension}`);
+        const errorMsg = `Invalid embedding dimension: ${embeddingDimension}. Must be one of: ${Object.values(VECTOR_DIMS).join(', ')}`;
+        logger.error(errorMsg);
+        throw new Error(errorMsg);
       }
-      
-      // Handle null input (initialization case)
+
       if (params === null) {
+        logger.debug('Creating test embedding for initialization');
         const testVector = Array(embeddingDimension).fill(0);
         testVector[0] = 0.1;
         return testVector;
       }
-      
-      // Get the text from whatever format was provided
+
       let text: string;
       if (typeof params === 'string') {
         text = params;
       } else if (typeof params === 'object' && params.text) {
         text = params.text;
       } else {
+        logger.warn('Invalid input format for embedding');
         const fallbackVector = Array(embeddingDimension).fill(0);
         fallbackVector[0] = 0.2;
         return fallbackVector;
       }
-      
-      // Skip API call for empty text
+
       if (!text.trim()) {
+        logger.warn('Empty text for embedding');
         const emptyVector = Array(embeddingDimension).fill(0);
         emptyVector[0] = 0.3;
         return emptyVector;
       }
-      
+
+      const baseURL = getBaseURL(runtime);
+      const apiKey = getApiKey(runtime);
+
+      if (!apiKey) {
+        throw new Error('Akash Chat API key not configured');
+      }
+
       try {
-        const baseURL = getBaseURL();
         const response = await fetch(`${baseURL}/embeddings`, {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${getApiKey(runtime)}`,
+            Authorization: `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: getSetting(runtime, 'AKASHCHAT_EMBEDDING_MODEL', 'BAAI-bge-large-en-v1-5'),
+            model: embeddingModelName,
             input: text,
           }),
         });
-        
+
         if (!response.ok) {
+          logger.error(`Akash Chat API error: ${response.status} - ${response.statusText}`);
           const errorVector = Array(embeddingDimension).fill(0);
           errorVector[0] = 0.4;
           return errorVector;
         }
-        
-        const data = (await response.json()) as { data: [{ embedding: number[] }] };
-        
+
+        const data = (await response.json()) as {
+          data: [{ embedding: number[] }];
+          usage?: { prompt_tokens: number; total_tokens: number };
+        };
+
         if (!data?.data?.[0]?.embedding) {
+          logger.error('API returned invalid structure');
           const errorVector = Array(embeddingDimension).fill(0);
           errorVector[0] = 0.5;
           return errorVector;
         }
-        
-        return data.data[0].embedding;
-      } catch (error) {
-        logger.error('Error generating embedding:', error);
+
+        const embedding = data.data[0].embedding;
+
+        if (data.usage) {
+          const usage = {
+            promptTokens: data.usage.prompt_tokens,
+            completionTokens: 0,
+            totalTokens: data.usage.total_tokens,
+          };
+
+          emitModelUsageEvent(runtime, ModelType.TEXT_EMBEDDING, text, usage);
+        }
+
+        logger.log(`Got valid embedding with length ${embedding.length}`);
+        return embedding;
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        logger.error(`Error generating embedding: ${message}`);
         const errorVector = Array(embeddingDimension).fill(0);
         errorVector[0] = 0.6;
         return errorVector;
@@ -389,43 +418,56 @@ export const akashchatPlugin: Plugin = {
     },
     
     [ModelType.TEXT_TOKENIZER_ENCODE]: async (
-      runtime,
+      _runtime: IAgentRuntime,
       { prompt, modelType = ModelType.TEXT_LARGE }: TokenizeTextParams
     ) => {
-      return tokenizeText(runtime, modelType ?? ModelType.TEXT_LARGE, prompt);
+      return await tokenizeText(modelType ?? ModelType.TEXT_LARGE, prompt);
     },
     
     [ModelType.TEXT_TOKENIZER_DECODE]: async (
-      runtime,
+      _runtime: IAgentRuntime,
       { tokens, modelType = ModelType.TEXT_LARGE }: DetokenizeTextParams
     ) => {
-      return detokenizeText(runtime, modelType ?? ModelType.TEXT_LARGE, tokens);
+      return await detokenizeText(modelType ?? ModelType.TEXT_LARGE, tokens);
     },
     
-    [ModelType.TEXT_SMALL]: async (runtime, { 
-      prompt, 
-      stopSequences = [],
-      maxTokens = 8192,
-      temperature =  0.7,
-      frequencyPenalty = 0.7,
-      presencePenalty = 0.7,
-    }: GenerateTextParams) => {
-      const akashchat = getAkashChatClient(runtime);
-      const model = getModelName(runtime, ModelType.TEXT_SMALL);
+    [ModelType.TEXT_SMALL]: async (
+      runtime: IAgentRuntime,
+      { 
+        prompt, 
+        stopSequences = [],
+        maxTokens = 8192,
+        temperature = 0.7,
+        frequencyPenalty = 0.7,
+        presencePenalty = 0.7,
+      }: GenerateTextParams
+    ) => {
+      const akashChat = createAkashChatClient(runtime);
+      const modelName = getSmallModel(runtime);
       
-      return generateAkashChatText(akashchat, model, {
-        prompt,
-        system: runtime.character.system,
-        temperature,
-        maxTokens,
-        frequencyPenalty,
-        presencePenalty,
-        stopSequences,
+      logger.log(`[AkashChat] Using TEXT_SMALL model: ${modelName}`);
+      logger.log(prompt);
+
+      const { text: response, usage } = await generateText({
+        model: akashChat.languageModel(modelName),
+        prompt: prompt,
+        system: runtime.character.system ?? undefined,
+        temperature: temperature,
+        maxTokens: maxTokens,
+        frequencyPenalty: frequencyPenalty,
+        presencePenalty: presencePenalty,
+        stopSequences: stopSequences,
       });
+
+      if (usage) {
+        emitModelUsageEvent(runtime, ModelType.TEXT_SMALL, prompt, usage);
+      }
+
+      return response;
     },
     
     [ModelType.TEXT_LARGE]: async (
-      runtime,
+      runtime: IAgentRuntime,
       {
         prompt,
         stopSequences = [],
@@ -435,32 +477,36 @@ export const akashchatPlugin: Plugin = {
         presencePenalty = 0.7,
       }: GenerateTextParams
     ) => {
-      const akashchat = getAkashChatClient(runtime);
-      const model = getModelName(runtime, ModelType.TEXT_LARGE);
+      const akashChat = createAkashChatClient(runtime);
+      const modelName = getLargeModel(runtime);
       
-      return generateAkashChatText(akashchat, model, {
-        prompt,
-        system: runtime.character.system,
-        temperature,
-        maxTokens,
-        frequencyPenalty,
-        presencePenalty,
-        stopSequences,
+      logger.log(`[AkashChat] Using TEXT_LARGE model: ${modelName}`);
+      logger.log(prompt);
+
+      const { text: response, usage } = await generateText({
+        model: akashChat.languageModel(modelName),
+        prompt: prompt,
+        system: runtime.character.system ?? undefined,
+        temperature: temperature,
+        maxTokens: maxTokens,
+        frequencyPenalty: frequencyPenalty,
+        presencePenalty: presencePenalty,
+        stopSequences: stopSequences,
       });
+
+      if (usage) {
+        emitModelUsageEvent(runtime, ModelType.TEXT_LARGE, prompt, usage);
+      }
+
+      return response;
     },
     
-    [ModelType.OBJECT_SMALL]: async (runtime, params: ObjectGenerationParams) => {
-      const akashchat = getAkashChatClient(runtime);
-      const model = getModelName(runtime, ModelType.TEXT_SMALL);
-      
-      return generateAkashChatObject(akashchat, model, params);
+    [ModelType.OBJECT_SMALL]: async (runtime: IAgentRuntime, params: ObjectGenerationParams) => {
+      return generateObjectByModelType(runtime, params, ModelType.OBJECT_SMALL, getSmallModel);
     },
     
-    [ModelType.OBJECT_LARGE]: async (runtime, params: ObjectGenerationParams) => {
-      const akashchat = getAkashChatClient(runtime);
-      const model = getModelName(runtime, ModelType.TEXT_LARGE);
-      
-      return generateAkashChatObject(akashchat, model, params);
+    [ModelType.OBJECT_LARGE]: async (runtime: IAgentRuntime, params: ObjectGenerationParams) => {
+      return generateObjectByModelType(runtime, params, ModelType.OBJECT_LARGE, getLargeModel);
     },
   },
   
@@ -470,64 +516,94 @@ export const akashchatPlugin: Plugin = {
       tests: [
         {
           name: 'akashchat_test_url_and_api_key_validation',
-          fn: async (runtime) => {
-            try {
-              const baseURL = getBaseURL();
-              const response = await fetch(`${baseURL}/models`, {
-                headers: {
-                  Authorization: `Bearer ${runtime.getSetting('AKASH_CHAT_API_KEY')}`,
-                },
-              });
-              
-              if (!response.ok) {
-                logger.error(`Failed to validate Akash Chat API key: ${response.statusText}`);
-                return;
-              }
-              
-              const data = await response.json();
-              logger.log('Models Available:', (data as { data: unknown[] })?.data?.length);
-            } catch (error) {
-              logger.error('Error in akashchat_test_url_and_api_key_validation:', error);
+          fn: async (runtime: IAgentRuntime) => {
+            const baseURL = getBaseURL(runtime);
+            const response = await fetch(`${baseURL}/models`, {
+              headers: {
+                Authorization: `Bearer ${getApiKey(runtime)}`,
+              },
+            });
+            const data = await response.json();
+            logger.log('Models Available:', (data as { data?: unknown[] })?.data?.length ?? 'N/A');
+            if (!response.ok) {
+              throw new Error(`Failed to validate Akash Chat API key: ${response.statusText}`);
             }
           },
         },
         {
           name: 'akashchat_test_text_embedding',
-          fn: async (runtime) => {
+          fn: async (runtime: IAgentRuntime) => {
             try {
               const embedding = await runtime.useModel(ModelType.TEXT_EMBEDDING, {
                 text: 'Hello, world!',
               });
-              logger.log('Embedding generated with length:', embedding.length);
-            } catch (error) {
-              logger.error('Error in test_text_embedding:', error);
+              logger.log('embedding', embedding);
+            } catch (error: unknown) {
+              const message = error instanceof Error ? error.message : String(error);
+              logger.error(`Error in test_text_embedding: ${message}`);
+              throw error;
             }
           },
         },
         {
           name: 'akashchat_test_text_large',
-          fn: async (runtime) => {
+          fn: async (runtime: IAgentRuntime) => {
             try {
               const text = await runtime.useModel(ModelType.TEXT_LARGE, {
                 prompt: 'What is the nature of reality in 10 words?',
               });
-              logger.log('Generated with test_text_large:', text);
-            } catch (error) {
-              logger.error('Error in test_text_large:', error);
+              if (text.length === 0) {
+                throw new Error('Failed to generate text');
+              }
+              logger.log('generated with test_text_large:', text);
+            } catch (error: unknown) {
+              const message = error instanceof Error ? error.message : String(error);
+              logger.error(`Error in test_text_large: ${message}`);
+              throw error;
             }
           },
         },
         {
           name: 'akashchat_test_text_small',
-          fn: async (runtime) => {
+          fn: async (runtime: IAgentRuntime) => {
             try {
               const text = await runtime.useModel(ModelType.TEXT_SMALL, {
                 prompt: 'What is the nature of reality in 10 words?',
               });
-              logger.log('Generated with test_text_small:', text);
-            } catch (error) {
-              logger.error('Error in test_text_small:', error);
+              if (text.length === 0) {
+                throw new Error('Failed to generate text');
+              }
+              logger.log('generated with test_text_small:', text);
+            } catch (error: unknown) {
+              const message = error instanceof Error ? error.message : String(error);
+              logger.error(`Error in test_text_small: ${message}`);
+              throw error;
             }
+          },
+        },
+        {
+          name: 'akashchat_test_text_tokenizer_encode',
+          fn: async (runtime: IAgentRuntime) => {
+            const prompt = 'Hello tokenizer encode!';
+            const tokens = await runtime.useModel(ModelType.TEXT_TOKENIZER_ENCODE, { prompt });
+            if (!Array.isArray(tokens) || tokens.length === 0) {
+              throw new Error('Failed to tokenize text: expected non-empty array of tokens');
+            }
+            logger.log('Tokenized output:', tokens);
+          },
+        },
+        {
+          name: 'akashchat_test_text_tokenizer_decode',
+          fn: async (runtime: IAgentRuntime) => {
+            const prompt = 'Hello tokenizer decode!';
+            const tokens = await runtime.useModel(ModelType.TEXT_TOKENIZER_ENCODE, { prompt });
+            const decodedText = await runtime.useModel(ModelType.TEXT_TOKENIZER_DECODE, { tokens });
+            if (decodedText !== prompt) {
+              throw new Error(
+                `Decoded text does not match original. Expected "${prompt}", got "${decodedText}"`
+              );
+            }
+            logger.log('Decoded text:', decodedText);
           },
         },
       ],

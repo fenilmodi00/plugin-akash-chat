@@ -47,4 +47,14 @@ yarn-error.log*
 
 # Testing
 coverage/
-EOL
+
+# Temporary directories
+.eliza/
+.elizadb-test/
+cache/
+temp/
+tmp/
+
+# Generated content
+generatedImages/
+data/uploads/
