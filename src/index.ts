@@ -183,9 +183,9 @@ function getExperimentalTelemetry(runtime: IAgentRuntime): boolean {
  */
 function createAkashChatClient(runtime: IAgentRuntime) {
   return createOpenAI({
-    apiKey: getApiKey(runtime),
+    apiKey: getApiKey(runtime) || undefined,
     baseURL: getBaseURL(runtime),
-    fetch: runtime.fetch,
+    fetch: runtime.fetch || undefined,
   });
 }
 
@@ -350,7 +350,7 @@ function emitModelUsageEvent(
 /**
  * Handles rate limit errors with exponential backoff
  */
-async function handleRateLimitError(error: Error, retryFn: () => Promise<unknown>, retryCount = 0) {
+async function handleRateLimitError(error: Error, retryFn: () => Promise<unknown>, retryCount = 0): Promise<unknown> {
   if (!error.message.includes('Rate limit')) {
     throw error;
   }
@@ -371,7 +371,7 @@ async function handleRateLimitError(error: Error, retryFn: () => Promise<unknown
     return await retryFn();
   } catch (retryError: any) {
     if (retryError.message.includes('Rate limit') && retryCount < 3) {
-      return handleRateLimitError(retryError, retryFn, retryCount + 1);
+      return handleRateLimitError(retryError, retryFn, retryCount + 1) as Promise<unknown>;
     }
     throw retryError;
   }
@@ -392,7 +392,7 @@ async function generateAkashChatText(
     presencePenalty: number;
     stopSequences: string[];
   }
-) {
+): Promise<string> {
   try {
     const { text, usage } = await generateText({
       model: akashchat.languageModel(model),
